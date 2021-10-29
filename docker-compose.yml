@@ -8,10 +8,11 @@ services:
       dockerfile: Dockerfile
       args:
         PIPENV_DEV: "True"
+    environment:
+      - PROMETHEUS_MULTIPROC_DIR=/tmp
     depends_on:
       - db
       - redis
-      - unleash
 
   koku-server:
     container_name: koku_server
@@ -66,6 +67,9 @@ services:
       - '.:/koku/'
     depends_on:
       - koku-base
+      - db
+      - pgadmin
+      - unleash
 
   masu-server:
     container_name: masu_server
@@ -119,6 +123,9 @@ services:
       - '.:/koku/'
     depends_on:
       - koku-base
+      - db
+      - pgadmin
+      - unleash
 
   koku-worker:
     hostname: koku-worker-1
@@ -199,6 +206,9 @@ services:
       - './testing/local_providers/gcp_local_3/:/tmp/gcp_local_bucket_3'
     depends_on:
         - koku-base
+        - db
+        - pgadmin
+        - unleash
 
   koku-listener:
     container_name: koku_listener
@@ -251,6 +261,9 @@ services:
       - '.:/koku'
     depends_on:
       - koku-base
+      - db
+      - pgadmin
+      - unleash
 
   sources-client:
     container_name: sources_client
@@ -300,6 +313,9 @@ services:
       - '.:/koku'
     depends_on:
       - koku-base
+      - db
+      - pgadmin
+      - unleash
 
   koku-beat:
     container_name: koku_beat
@@ -336,6 +352,7 @@ services:
       - '.:/koku'
     depends_on:
         - koku-base
+        - unleash
 
 ### Utilities
 
@@ -445,6 +462,7 @@ services:
       - 3001:3000
     depends_on:
       - db
+      - pgadmin
 
   koku-rabbit:
     container_name: koku_rabbit
@@ -476,3 +494,4 @@ services:
       - './.unleash:/.unleash'
     depends_on:
       - db
+      - pgadmin

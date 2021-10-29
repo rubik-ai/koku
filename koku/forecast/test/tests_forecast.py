@@ -374,7 +374,7 @@ class AWSForecastTest(IamTestCase):
         instance = AWSForecast(params)
         # set filters and access to be used in function
         filters = QueryFilterCollection()
-        access = ["589173575009"]
+        access = ["387694172318"]
         filt = [
             {"field": "account_alias__account_alias", "operation": "icontains", "composition_key": "account_filter"},
             {"field": "usage_account_id", "operation": "icontains", "composition_key": "account_filter"},
@@ -399,7 +399,7 @@ class AWSForecastTest(IamTestCase):
         instance = AWSForecast(params)
         # set filters and access to be used in function
         filters = QueryFilterCollection()
-        access = ["589173575009"]
+        access = ["387694172318"]
         filt = {"field": "account_alias__account_alias", "operation": "icontains", "composition_key": "account_filter"}
         expected = QueryFilterCollection(
             filters=[
