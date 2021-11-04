@@ -11,9 +11,7 @@ from UnleashClient.strategies import Strategy
 
 from .env import ENVIRONMENT
 
-
 LOG = logging.getLogger(__name__)
-
 
 log_level = getattr(logging, "WARNING")
 if isinstance(getattr(logging, settings.UNLEASH_LOGGING_LEVEL), int):
@@ -28,6 +26,16 @@ def fallback_true(feature_name: str, context: dict) -> bool:
 
 class KokuUnleashClient(UnleashClient):
     """Koku Unleash Client."""
+
+    if settings.CARETAKER:
+        def initialize_client(self) -> None:
+            return
+
+        def is_enabled(self,
+                       feature_name: str,
+                       context: dict = None,
+                       fallback_function=None) -> bool:
+            return False
 
     def destroy(self):
         """Override destroy so that cache is not deleted."""
@@ -65,4 +73,6 @@ UNLEASH_CLIENT = KokuUnleashClient(
     custom_strategies=strategies,
     cache_directory=settings.UNLEASH_CACHE_DIR,
     verbose_log_level=log_level,
+    disable_metrics=True,
+    disable_registration=True,
 )

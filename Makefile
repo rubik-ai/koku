@@ -651,3 +651,27 @@ restore-local-db-dir:
 	    echo "NOTE :: There is no pg_data.bak dir to restore from." ; \
 	fi
 	@cd - >/dev/null
+
+# DataOS Commands
+dataos-docker-build:
+	@echo "====docker build===="
+	docker build --progress=plain -f ./dataos/Dockerfile . -t rubiklabs/caretaker-cloud-kernel-cost:0.1.0
+
+dataos-docker-up: dataos-docker-deps-up
+	@echo "====docker compose up===="
+	@echo "====waiting for deps to finish starting===="
+	@sleep 25
+	$(DOCKER_COMPOSE) --project-directory . -f ./dataos/docker-compose.yml up -d
+
+dataos-docker-deps-up:
+	@echo "====docker compose dependencies up===="
+	$(DOCKER_COMPOSE) --project-directory . -f ./dataos/docker-compose.yml up -d db redis
+
+dataos-docker-workers-up:
+	@echo "====docker compose workers up===="
+	$(DOCKER_COMPOSE) --project-directory . -f ./dataos/docker-compose.yml up -d caretaker-worker
+
+dataos-docker-down:
+	@echo "====docker compose down===="
+	$(DOCKER_COMPOSE) --project-directory . -f ./dataos/docker-compose.yml down -v
+	$(PREFIX) make clear-testing

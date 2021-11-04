@@ -70,6 +70,9 @@ HTTP_METHOD_LIST = ["get", "head"]
 if settings.DEVELOPMENT:
     MIXIN_LIST.extend([mixins.CreateModelMixin, mixins.UpdateModelMixin, DestroySourceMixin])
     HTTP_METHOD_LIST.extend(["post", "patch", "delete"])
+elif settings.CARETAKER:
+    MIXIN_LIST.extend([mixins.CreateModelMixin, mixins.UpdateModelMixin, DestroySourceMixin])
+    HTTP_METHOD_LIST.extend(["post", "patch", "delete"])
 
 
 class SourceFilter(FilterSet):

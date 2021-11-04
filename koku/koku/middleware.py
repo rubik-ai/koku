@@ -53,6 +53,7 @@ USER_CACHE = TTLCache(maxsize=MAX_CACHE_SIZE, ttl=TIME_TO_CACHE)
 LOG = logging.getLogger(__name__)
 MASU = settings.MASU
 SOURCES = settings.SOURCES
+CARETAKER = settings.CARETAKER
 UNIQUE_ACCOUNT_COUNTER = Counter("hccm_unique_account", "Unique Account Counter")
 UNIQUE_USER_COUNTER = Counter("hccm_unique_user", "Unique User Counter", ["account", "user"])
 
@@ -330,7 +331,10 @@ class IdentityHeaderMiddleware(MiddlewareMixin):
             user_access = cache.get(user.uuid)
 
             if not user_access:
-                if settings.DEVELOPMENT and request.user.req_id == "DEVELOPMENT":
+                if settings.CARETAKER and request.user.req_id == "CARETAKER":
+                    LOG.debug("CARETAKER is Enabled. Using CARETAKER_IDENTITY for user: %s", json_rh_auth)
+                    user_access = request.user.access
+                elif settings.DEVELOPMENT and request.user.req_id == "DEVELOPMENT":
                     # passthrough for DEVELOPMENT_IDENTITY env var.
                     LOG.warning("DEVELOPMENT is Enabled. Bypassing access lookup for user: %s", json_rh_auth)
                     user_access = request.user.access

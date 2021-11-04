@@ -77,6 +77,7 @@ INSTALLED_APPS = [
     "cost_models",
     "sources",
     "tenant_schemas",
+    "caretaker",
 ]
 
 SILENCED_SYSTEM_CHECKS = ["tenant_schemas.W001"]
@@ -123,6 +124,14 @@ MIDDLEWARE = [
     PROMETHEUS_AFTER_MIDDLEWARE,
 ]
 
+# -------- DATAOS CARETAKER CONFIGURATIONS -------- #
+CARETAKER = ENVIRONMENT.bool("CARETAKER", default=False)
+if CARETAKER:
+    DEBUG = ENVIRONMENT.bool("CARETAKER_DEBUG", default=False)
+    CARETAKER_IDENTITY = ENVIRONMENT.json("CARETAKER_IDENTITY")
+    MIDDLEWARE.insert(5, "caretaker.caretaker_middleware.CaretakerIdentityHeaderMiddleware")
+# -------- END DATAOS CARETAKER CONFIGURATIONS -------- #
+
 DEVELOPMENT = ENVIRONMENT.bool("DEVELOPMENT", default=False)
 if DEVELOPMENT:
     DEFAULT_IDENTITY = {
@@ -134,7 +143,8 @@ if DEVELOPMENT:
         "entitlements": {"cost_management": {"is_entitled": "True"}},
     }
     DEVELOPMENT_IDENTITY = ENVIRONMENT.json("DEVELOPMENT_IDENTITY", default=DEFAULT_IDENTITY)
-    MIDDLEWARE.insert(5, "koku.dev_middleware.DevelopmentIdentityHeaderMiddleware")
+    if not CARETAKER:
+        MIDDLEWARE.insert(5, "koku.dev_middleware.DevelopmentIdentityHeaderMiddleware")
 
 ### Feature Flags
 UNLEASH_HOST = CONFIGURATOR.get_feature_flag_host()
@@ -153,11 +163,14 @@ AUTHENTICATION_BACKENDS = ["django.contrib.auth.backends.AllowAllUsersModelBacke
 
 MASU = ENVIRONMENT.bool("MASU", default=False)
 SOURCES = ENVIRONMENT.bool("SOURCES", default=False)
+
 ROOT_URLCONF = "koku.urls"
 if MASU:
     ROOT_URLCONF = "masu.urls"
 elif SOURCES:
     ROOT_URLCONF = "sources.urls"
+elif CARETAKER:
+    ROOT_URLCONF = "caretaker.urls"
 
 TEMPLATES = [
     {
@@ -485,8 +498,6 @@ USE_RABBIT = ENVIRONMENT.bool("USE_RABBIT", default=False)
 if USE_RABBIT:
     CELERY_BROKER_URL = f"amqp://{RABBITMQ_HOST}:{RABBITMQ_PORT}"
     print(f"celery broker using rabbit url: {CELERY_BROKER_URL}")
-else:
-    print(f"celery broker using redis url: {CELERY_BROKER_URL}")
 
 CELERY_BROKER_CONNECTION_MAX_RETRIES = 400
 CELERY_BROKER_CONNECTION_RETRY = True

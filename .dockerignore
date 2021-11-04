@@ -12,3 +12,4 @@
 !scripts/run_migrations.sh
 !scripts/job_script.sh
 !scripts/copy_static_aws_perspective_data.py
+!./*.sh
