@@ -37,20 +37,19 @@ COPY . /tmp/src/.
 RUN \
     /usr/bin/fix-permissions /tmp/src && \
     chmod 755 $STI_SCRIPTS_PATH/assemble $STI_SCRIPTS_PATH/run && \
-    groupadd -g ${USER_ID} koku && \
-    useradd -m -s /bin/bash -g ${USER_ID} -u ${USER_ID} -G root koku && \
+    groupadd -g ${USER_ID} caretaker && \
+    useradd -m -s /bin/bash -g ${USER_ID} -u ${USER_ID} -G root caretaker && \
     chmod g+rwx /opt
 
-USER koku
+USER caretaker
 
 RUN umask u=rwx,g=rwx,o=rx && \
     $STI_SCRIPTS_PATH/assemble && \
     ls -la /opt/app-root/src && \
     ls -la /opt/app-root/src/koku
 
-EXPOSE 8080
+EXPOSE 8000
 
 WORKDIR /opt/app-root/src
 
-# Set the default CMD
 CMD $STI_SCRIPTS_PATH/run

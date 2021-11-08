@@ -60,7 +60,7 @@ services:
   caretaker-worker:
     working_dir: /opt/app-root/src/koku
     container_name: caretaker_cloud_kernel_cost_worker
-    hostname: koku-worker-1
+    hostname: caretaker-worker-1
     image: rubiklabs/caretaker-cloud-kernel-cost:0.1.0
     entrypoint: ['celery', '-A', 'koku', 'worker', '-l', 'info', '-Q', 'celery,download,ocp,priority,summary,cost_model,refresh']
     environment:

@@ -657,6 +657,10 @@ dataos-docker-build:
 	@echo "====docker build===="
 	docker build --progress=plain -f ./dataos/Dockerfile . -t rubiklabs/caretaker-cloud-kernel-cost:0.1.0
 
+dataos-docker-push: dataos-docker-build
+	@echo "====docker push===="
+	docker push rubiklabs/caretaker-cloud-kernel-cost:0.1.0
+
 dataos-docker-up: dataos-docker-deps-up
 	@echo "====docker compose up===="
 	@echo "====waiting for deps to finish starting===="
