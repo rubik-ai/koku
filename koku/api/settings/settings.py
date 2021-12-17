@@ -34,6 +34,7 @@ from api.tags.gcp.queries import GCPTagQueryHandler
 from api.tags.gcp.view import GCPTagView
 from api.tags.ocp.queries import OCPTagQueryHandler
 from api.tags.ocp.view import OCPTagView
+from koku.cache import invalidate_view_cache_for_tenant_and_all_source_types
 from koku.cache import invalidate_view_cache_for_tenant_and_source_type
 from masu.util.common import update_enabled_keys
 from reporting.models import AWSEnabledTagKeys
@@ -205,8 +206,8 @@ class Settings:
         customer_specific_providers = Provider.objects.filter(customer=customer)
         has_aws_providers = customer_specific_providers.filter(type__icontains=Provider.PROVIDER_AWS).exists()
 
-        # cost_type plan settings TODO: only show in dev mode right now
-        if settings.DEVELOPMENT and has_aws_providers:
+        # cost_type plan settings
+        if has_aws_providers:
             cost_type_select_name = f'{"api.settings.cost_type"}'
             cost_type_text_context = (
                 "Select the preferred way of calculating upfront costs, either through savings "
@@ -313,7 +314,7 @@ class Settings:
             LOG.warning(f"Failed to store new currency settings for schema {self.schema}. Reason: {exp}")
             return False
 
-        invalidate_view_cache_for_tenant_and_source_type(self.schema, Provider.PROVIDER_OCP)
+        invalidate_view_cache_for_tenant_and_all_source_types(self.schema)
         return True
 
     def _cost_type_handler(self, settings):
@@ -338,7 +339,7 @@ class Settings:
             LOG.warning(f"Failed to store new cost_type settings for schema {self.schema}. Reason: {exp}")
             return False
 
-        invalidate_view_cache_for_tenant_and_source_type(self.schema, Provider.PROVIDER_OCP)
+        invalidate_view_cache_for_tenant_and_source_type(self.schema, Provider.PROVIDER_AWS)
         return True
 
     def build_settings(self):
