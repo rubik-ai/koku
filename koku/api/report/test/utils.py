@@ -119,7 +119,7 @@ class NiseDataLoader:
                 _fill_optional=True,
                 provider=provider,
                 billing_period_start_datetime=bill_date,
-                num_total_files=3,
+                num_total_files=4,
             )
             with open(static_data_path, "w") as f:
                 f.write(template.render(start_date=start_date, end_date=end_date))
@@ -145,10 +145,8 @@ class NiseDataLoader:
                     manifest_id=manifest.id,
                     synchronous=True,
                 )
-        update_cost_model_costs.s(
-            self.schema, provider.uuid, self.dh.last_month_start, self.dh.today, synchronous=True
-        ).apply()
-        refresh_materialized_views.s(self.schema, provider_type, provider_uuid=provider.uuid, synchronous=True).apply()
+        update_cost_model_costs(self.schema, provider.uuid, self.dh.last_month_start, self.dh.today, synchronous=True)
+        refresh_materialized_views(self.schema, provider_type, provider_uuid=provider.uuid, synchronous=True)
         shutil.rmtree(report_path, ignore_errors=True)
 
     def load_aws_data(self, customer, static_data_file, account_id=None, role_arn=None, day_list=None):

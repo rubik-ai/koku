@@ -35,11 +35,11 @@ from forecast import OCPAzureForecast
 from forecast import OCPForecast
 from forecast.forecast import LinearForecastResult
 from reporting.provider.aws.models import AWSCostEntryLineItemDailySummary
-from reporting.provider.gcp.models import GCPCostSummary
-from reporting.provider.gcp.models import GCPCostSummaryByAccount
-from reporting.provider.gcp.models import GCPCostSummaryByProject
-from reporting.provider.ocp.models import OCPCostSummary
-from reporting.provider.ocp.models import OCPCostSummaryByNode
+from reporting.provider.gcp.models import GCPCostSummaryByAccountP
+from reporting.provider.gcp.models import GCPCostSummaryByProjectP
+from reporting.provider.gcp.models import GCPCostSummaryP
+from reporting.provider.ocp.models import OCPCostSummaryByNodeP
+from reporting.provider.ocp.models import OCPCostSummaryP
 from reporting.provider.ocp.models import OCPUsageLineItemDailySummary
 
 LOG = logging.getLogger(__name__)
@@ -560,28 +560,28 @@ class GCPForecastTest(IamTestCase):
         """Test that we select a valid table or view."""
         params = self.mocked_query_params("?", GCPForecastCostView)
         forecast = GCPForecast(params)
-        self.assertEqual(forecast.cost_summary_table, GCPCostSummary)
+        self.assertEqual(forecast.cost_summary_table, GCPCostSummaryP)
 
         params = self.mocked_query_params("?", GCPForecastCostView, access={"gcp.account": {"read": ["1"]}})
         forecast = GCPForecast(params)
-        self.assertEqual(forecast.cost_summary_table, GCPCostSummaryByAccount)
+        self.assertEqual(forecast.cost_summary_table, GCPCostSummaryByAccountP)
 
         params = self.mocked_query_params("?", GCPForecastCostView, access={"gcp.project": {"read": ["1"]}})
         forecast = GCPForecast(params)
-        self.assertEqual(forecast.cost_summary_table, GCPCostSummaryByProject)
+        self.assertEqual(forecast.cost_summary_table, GCPCostSummaryByProjectP)
 
         params = self.mocked_query_params(
             "?", GCPForecastCostView, access={"gcp.account": {"read": ["1"]}, "gcp.project": {"read": ["1"]}}
         )
         forecast = GCPForecast(params)
-        self.assertEqual(forecast.cost_summary_table, GCPCostSummaryByProject)
+        self.assertEqual(forecast.cost_summary_table, GCPCostSummaryByProjectP)
 
         params = self.mocked_query_params(
             "?", GCPForecastCostView, access={"gcp.account": {"read": ["1"]}, "gcp.project": {"read": ["1"]}}
         )
 
         forecast = GCPForecast(params)
-        self.assertEqual(forecast.cost_summary_table, GCPCostSummaryByProject)
+        self.assertEqual(forecast.cost_summary_table, GCPCostSummaryByProjectP)
 
 
 class OCPForecastTest(IamTestCase):
@@ -638,21 +638,21 @@ class OCPForecastTest(IamTestCase):
         """Test that we select a valid table or view."""
         params = self.mocked_query_params("?", OCPCostForecastView)
         forecast = OCPForecast(params)
-        self.assertEqual(forecast.cost_summary_table, OCPCostSummary)
+        self.assertEqual(forecast.cost_summary_table, OCPCostSummaryP)
 
         params = self.mocked_query_params("?", OCPCostForecastView, access={"openshift.cluster": {"read": ["1"]}})
         forecast = OCPForecast(params)
-        self.assertEqual(forecast.cost_summary_table, OCPCostSummary)
+        self.assertEqual(forecast.cost_summary_table, OCPCostSummaryP)
 
         params = self.mocked_query_params("?", OCPCostForecastView, access={"openshift.node": {"read": ["1"]}})
         forecast = OCPForecast(params)
-        self.assertEqual(forecast.cost_summary_table, OCPCostSummaryByNode)
+        self.assertEqual(forecast.cost_summary_table, OCPCostSummaryByNodeP)
 
         params = self.mocked_query_params(
             "?", OCPCostForecastView, access={"openshift.cluster": {"read": ["1"]}, "openshift.node": {"read": ["1"]}}
         )
         forecast = OCPForecast(params)
-        self.assertEqual(forecast.cost_summary_table, OCPCostSummaryByNode)
+        self.assertEqual(forecast.cost_summary_table, OCPCostSummaryByNodeP)
 
         params = self.mocked_query_params("?", OCPCostForecastView, access={"openshift.project": {"read": ["1"]}})
         forecast = OCPForecast(params)
