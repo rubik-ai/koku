@@ -197,7 +197,7 @@ HOSTNAME = ENVIRONMENT.get_value("HOSTNAME", default="localhost")
 
 REDIS_HOST = CONFIGURATOR.get_in_memory_db_host()
 REDIS_PORT = CONFIGURATOR.get_in_memory_db_port()
-REDIS_DB = 1
+REDIS_DB = CONFIGURATOR.get_in_memory_db_id()
 REDIS_URL = f"redis://{REDIS_HOST}:{REDIS_PORT}/{REDIS_DB}"
 
 KEEPDB = ENVIRONMENT.bool("KEEPDB", default=True)
@@ -230,7 +230,7 @@ else:
         },
         "rbac": {
             "BACKEND": "django_redis.cache.RedisCache",
-            "LOCATION": f"redis://{REDIS_HOST}:{REDIS_PORT}/1",
+            "LOCATION": f"redis://{REDIS_HOST}:{REDIS_PORT}/2",
             "OPTIONS": {
                 "CLIENT_CLASS": "django_redis.client.DefaultClient",
                 "IGNORE_EXCEPTIONS": True,

@@ -47,6 +47,11 @@ class Configurator:
         pass
 
     @staticmethod
+    def get_in_memory_db_id():
+        """Obtain in memory (redis) db id."""
+        pass
+
+    @staticmethod
     def get_kafka_broker_host():
         """Obtain kafka broker host address."""
         pass
@@ -199,6 +204,11 @@ class EnvConfigurator(Configurator):
     def get_in_memory_db_port():
         """Obtain in memory (redis) db port."""
         return ENVIRONMENT.get_value("REDIS_PORT", default="6379")
+
+    @staticmethod
+    def get_in_memory_db_id():
+        """Obtain in memory (redis) db id."""
+        return ENVIRONMENT.get_value("REDIS_DB_ID", default="1")
 
     @staticmethod
     def get_kafka_broker_host():
@@ -364,6 +374,11 @@ class ClowderConfigurator(Configurator):
         """Obtain in memory (redis) db port."""
         return LoadedConfig.inMemoryDb.port
         # return ENVIRONMENT.get_value("REDIS_PORT", default="6379")
+
+    @staticmethod
+    def get_in_memory_db_id():
+        """Obtain in memory (redis) db id."""
+        return LoadedConfig.inMemoryDb.id
 
     @staticmethod
     def get_kafka_broker_host():
