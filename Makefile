@@ -536,11 +536,23 @@ gcp-source:
 ifndef gcp_name
 	$(error param gcp_name is not set)
 endif
-# Required environment variables are: [GCP_DATASET, GCP_TABLE_ID, GCP_PROJECT_ID]
 	(printenv GCP_DATASET > /dev/null 2>&1) || (echo 'GCP_DATASET is not set in .env' && exit 1)
 	(printenv GCP_TABLE_ID > /dev/null 2>&1) || (echo 'GCP_TABLE_ID is not set in .env' && exit 1)
 	(printenv GCP_PROJECT_ID > /dev/null 2>&1) || (echo 'GCP_PROJECT_ID is not set in .env' && exit 1)
 	curl -d '{"name": "$(gcp_name)", "source_type": "GCP", "authentication": {"credentials": {"project_id":"${GCP_PROJECT_ID}"}}, "billing_source": {"data_source": {"table_id": "${GCP_TABLE_ID}", "dataset": "${GCP_DATASET}"}}}' -H "Content-Type: application/json" -X POST http://0.0.0.0:8000/api/cost-management/v1/sources/
+
+azure-source:
+ifndef azure_name
+	$(error param azure_name is not set)
+endif
+	(printenv AZURE_RESOURCE_GROUP > /dev/null 2>&1) || (echo 'AZURE_RESOURCE_GROUP is not set in .env' && exit 1)
+	(printenv AZURE_STORAGE_ACCOUNT > /dev/null 2>&1) || (echo 'AZURE_STORAGE_ACCOUNT is not set in .env' && exit 1)
+	(printenv AZURE_SUBSCRIPTION_ID > /dev/null 2>&1) || (echo 'AZURE_SUBSCRIPTION_ID is not set in .env' && exit 1)
+	(printenv AZURE_TENANT_ID > /dev/null 2>&1) || (echo 'AZURE_TENANT_ID is not set in .env' && exit 1)
+	(printenv AZURE_CLIENT_ID > /dev/null 2>&1) || (echo 'AZURE_CLIENT_ID is not set in .env' && exit 1)
+	(printenv AZURE_CLIENT_SECRET > /dev/null 2>&1) || (echo 'AZURE_CLIENT_SECRET is not set in .env' && exit 1)
+	(printenv AZURE_CLOUD > /dev/null 2>&1) || (echo 'AZURE_CLOUD is not set in .env' && exit 1)
+	curl -d '{"name": "$(azure_name)", "source_type": "Azure", "authentication": {"credentials": {"subscription_id":"${AZURE_SUBSCRIPTION_ID}", "tenant_id": "${AZURE_TENANT_ID}", "client_id": "${AZURE_CLIENT_ID}", "client_secret": "${AZURE_CLIENT_SECRET}", "cloud": "${AZURE_CLOUD}"}}, "billing_source": {"data_source": {"resource_group": "${AZURE_RESOURCE_GROUP}", "storage_account": "${AZURE_STORAGE_ACCOUNT}"}}}' -H "Content-Type: application/json" -X POST http://0.0.0.0:8000/api/cost-management/v1/sources/
 
 
 ###################################################
@@ -668,11 +680,11 @@ restore-local-db-dir:
 # DataOS Commands
 dataos-docker-build:
 	@echo "====docker build===="
-	docker build --progress=plain -f ./dataos/Dockerfile . -t rubiklabs/caretaker-cloud-kernel-usage:0.1.0
+	docker build --progress=plain -f ./dataos/Dockerfile . -t rubiklabs/caretaker-cloud-kernel-usage:0.1.0-dev
 
 dataos-docker-push: dataos-docker-build
 	@echo "====docker push===="
-	docker push rubiklabs/caretaker-cloud-kernel-usage:0.1.0
+	docker push rubiklabs/caretaker-cloud-kernel-usage:0.1.0-dev
 
 dataos-docker-up: dataos-docker-deps-up
 	@echo "====docker compose up===="
