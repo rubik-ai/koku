@@ -17,7 +17,7 @@ LABELS_DIR="$WORKSPACE/github_labels"
 
 export IQE_PLUGINS="cost_management"
 export IQE_MARKER_EXPRESSION="cost_smoke"
-export IQE_CJI_TIMEOUT="90m"
+export IQE_CJI_TIMEOUT="120m"
 
 set -ex
 
@@ -41,7 +41,7 @@ function build_image() {
 function run_smoke_tests() {
     run_trino_smoke_tests
     source ${CICD_ROOT}/_common_deploy_logic.sh
-    export NAMESPACE=$(bonfire namespace reserve --duration 2)
+    export NAMESPACE=$(bonfire namespace reserve --duration 2h15m)
 
     oc get secret/koku-aws -o json -n ephemeral-base | jq -r '.data' > aws-creds.json
     oc get secret/koku-gcp -o json -n ephemeral-base | jq -r '.data' > gcp-creds.json
@@ -55,8 +55,7 @@ function run_smoke_tests() {
 
     bonfire deploy \
         ${APP_NAME} \
-        --source=appsre \
-        --ref-env insights-stage \
+        --ref-env insights-production \
         --set-template-ref ${APP_NAME}/${COMPONENT_NAME}=${ghprbActualCommit} \
         --set-image-tag ${IMAGE}=${IMAGE_TAG} \
         --namespace ${NAMESPACE} \
@@ -75,7 +74,7 @@ function run_smoke_tests() {
 }
 
 function run_trino_smoke_tests() {
-    if check_for_labels "trino-smoke-tests"
+    if check_for_labels "trino-smoke-tests|gcp-smoke-tests"
     then
         echo "Running smoke tests with ENABLE_PARQUET_PROCESSING set to TRUE"
         ENABLE_PARQUET_PROCESSING="true"

@@ -26,11 +26,13 @@ from api.provider.models import ProviderInfrastructureMap
 from api.provider.models import Sources
 from api.provider.provider_manager import ProviderManager
 from api.provider.provider_manager import ProviderManagerError
+from api.provider.provider_manager import ProviderProcessingError
 from api.utils import DateHelper
 from cost_models.cost_model_manager import CostModelManager
 from cost_models.models import CostModelMap
-from reporting.models import AWS_MATERIALIZED_VIEWS
-from reporting.models import OCP_MATERIALIZED_VIEWS
+from koku.database import get_model
+from reporting.provider.aws.models import UI_SUMMARY_TABLES as AWS_UI_SUMMARY_TABLES
+from reporting.provider.ocp.models import UI_SUMMARY_TABLES as OCP_UI_SUMMARY_TABLES
 from reporting_common.models import CostUsageReportManifest
 
 
@@ -265,6 +267,22 @@ class ProviderManagerTest(IamTestCase):
         self.assertEqual(auth_count, iniitial_auth_count)
         self.assertEqual(billing_count, initial_billing_count)
 
+    @patch("api.provider.provider_manager.ProviderManager.get_is_provider_processing")
+    def test_remove_still_processing(self, mock_is_processing):
+        """Test a provider remove while still processing data"""
+        mock_is_processing.return_value = True
+        provider = Provider.objects.first()
+        with tenant_context(self.tenant):
+            with self.assertRaises(ProviderProcessingError):
+                # Test that we throw an execption instead of deleting
+                manager = ProviderManager(str(provider.uuid))
+                manager.remove(self._create_delete_request(self.user), from_sources=True, retry_count=0)
+                self.assertTrue(Provider.objects.filter(uuid=str(provider.uuid)).exists())
+            # Now test that we DO delete after the given number of retries
+            manager = ProviderManager(str(provider.uuid))
+            manager.remove(self._create_delete_request(self.user), from_sources=True, retry_count=25)
+            self.assertFalse(Provider.objects.filter(uuid=str(provider.uuid)).exists())
+
     def test_remove_all_ocp_providers(self):
         """Remove all OCP providers."""
         provider_query = Provider.objects.all().filter(type="OCP")
@@ -275,9 +293,10 @@ class ProviderManagerTest(IamTestCase):
             with tenant_context(provider.customer):
                 manager = ProviderManager(provider.uuid)
                 manager.remove(self._create_delete_request(self.user, {"Sources-Client": "False"}))
-        for view in OCP_MATERIALIZED_VIEWS:
+        for view in OCP_UI_SUMMARY_TABLES:
             with tenant_context(customer):
-                self.assertFalse(view.objects.count())
+                model = get_model(view)
+                self.assertFalse(model.objects.count())
 
     def test_remove_all_aws_providers(self):
         """Remove all AWS providers."""
@@ -289,9 +308,10 @@ class ProviderManagerTest(IamTestCase):
             with tenant_context(provider.customer):
                 manager = ProviderManager(provider.uuid)
                 manager.remove(self._create_delete_request(self.user, {"Sources-Client": "False"}))
-        for view in AWS_MATERIALIZED_VIEWS:
+        for view in AWS_UI_SUMMARY_TABLES:
             with tenant_context(customer):
-                self.assertFalse(view.objects.count())
+                model = get_model(view)
+                self.assertFalse(model.objects.count())
 
     def test_remove_aws_auth_billing_remain(self):
         """Remove aws provider."""

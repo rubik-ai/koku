@@ -9,11 +9,13 @@ import uuid
 from unittest.mock import patch
 
 from dateutil import relativedelta
+from django.conf import settings
 from django.db import connection
 from django.db.models import Max
 from django.db.models import Min
 from django.db.models.query import QuerySet
 from tenant_schemas.utils import schema_context
+from trino.exceptions import TrinoExternalError
 
 from api.iam.test.iam_test_case import FakePrestoConn
 from api.metrics import constants as metric_constants
@@ -1198,42 +1200,6 @@ select * from eek where val1 in {{report_period_id}} ;
             self.accessor.populate_line_item_daily_summary_table_presto(
                 start_date, end_date, report_period_id, cluster_id, cluster_alias, source
             )
-
-    @patch("masu.database.ocp_report_db_accessor.kpdb.executescript")
-    @patch("masu.database.ocp_report_db_accessor.kpdb.connect")
-    def test_populate_pod_label_summary_table_presto(self, mock_connect, mock_executescript):
-        """
-        Test that OCP presto processing calls executescript
-        """
-        presto_conn = FakePrestoConn()
-        mock_connect.return_value = presto_conn
-        mock_executescript.return_value = []
-        dh = DateHelper()
-        start_date = dh.this_month_start
-        end_date = dh.next_month_start
-        report_period_ids = (1, 2)
-        source = self.provider_uuid
-        self.accessor.populate_pod_label_summary_table_presto(report_period_ids, start_date, end_date, source)
-        mock_connect.assert_called()
-        mock_executescript.assert_called()
-
-    @patch("masu.database.ocp_report_db_accessor.pkgutil.get_data")
-    @patch("masu.database.ocp_report_db_accessor.kpdb.connect")
-    def test_populate_pod_label_summary_table_presto_preprocess_exception(self, mock_connect, mock_get_data):
-        """
-        Test that OCP presto processing converts datetime to date for start, end dates
-        """
-        presto_conn = FakePrestoConn()
-        mock_connect.return_value = presto_conn
-        mock_get_data.return_value = b"""
-select * from eek where val1 in {{report_period_ids}} ;
-"""
-        start_date = "2020-01-01"
-        end_date = "2020-02-01"
-        report_period_ids = (1, 2)
-        source = self.provider_uuid
-        with self.assertRaises(kpdb.PreprocessStatementError):
-            self.accessor.populate_pod_label_summary_table_presto(report_period_ids, start_date, end_date, source)
 
     def test_populate_node_label_line_item_daily_table(self):
         """Test that the node label line item daily table populates."""
@@ -2729,3 +2695,14 @@ select * from eek where val1 in {{report_period_ids}} ;
                 report_period_id=report_period_id, usage_start__gte=start_date, infrastructure_raw_cost__gt=0
             ).count()
         self.assertEqual(count, 0)
+
+    @patch("masu.database.ocp_report_db_accessor.OCPReportDBAccessor.table_exists_trino")
+    @patch("masu.database.ocp_report_db_accessor.OCPReportDBAccessor._execute_presto_raw_sql_query")
+    def test_delete_ocp_hive_partition_by_day(self, mock_trino, mock_table_exist):
+        """Test that deletions work with retries."""
+        error = {"errorName": "HIVE_METASTORE_ERROR"}
+        mock_trino.side_effect = TrinoExternalError(error)
+        with self.assertRaises(TrinoExternalError):
+            self.accessor.delete_ocp_hive_partition_by_day([1], self.ocp_provider_uuid, "2022", "01")
+        mock_trino.assert_called()
+        self.assertEqual(mock_trino.call_count, settings.HIVE_PARTITION_DELETE_RETRIES)

@@ -322,9 +322,6 @@ class GCPReportDownloader(ReportDownloaderBase, DownloaderInterface):
         """
         relevant_file_names = list()
         for start, end in date_range_pair(self.scan_start, self.scan_end):
-            # When the days are the same nothing is downloaded.
-            if start == end:
-                continue
             end = end + relativedelta(days=1)
             relevant_file_names.append(f"{invoice_month}_{self.etag}_{start}:{end}.csv")
         return relevant_file_names
@@ -344,6 +341,10 @@ class GCPReportDownloader(ReportDownloaderBase, DownloaderInterface):
     def build_query_select_statement(self):
         """Helper to build query select statement."""
         columns_list = self.gcp_big_query_columns.copy()
+        columns_list = [
+            f"TO_JSON_STRING({col})" if col in ("labels", "system_labels", "project.labels") else col
+            for col in columns_list
+        ]
         columns_list.append("DATE(_PARTITIONTIME) as partition_time")
         return ",".join(columns_list)
 
