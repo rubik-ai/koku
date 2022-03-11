@@ -10,7 +10,7 @@ PGSQL_VERSION   = 9.6
 PYTHON	= $(shell which python)
 TOPDIR  = $(shell pwd)
 PYDIR	= koku
-SCRIPTDIR = $(TOPDIR)/scripts
+SCRIPTDIR = $(TOPDIR)/dev/scripts
 KOKU_SERVER = $(shell echo "${KOKU_API_HOST:-localhost}")
 KOKU_SERVER_PORT = $(shell echo "${KOKU_API_PORT:-8000}")
 MASU_SERVER = $(shell echo "${MASU_SERVICE_HOST:-localhost}")
@@ -72,10 +72,11 @@ help:
 	@echo "  large-ocp-source-testing              create a test OCP source "large_ocp_1" with a larger volume of data"
 	@echo "                                          @param nise_config_dir - directory of nise config files to use"
 	@echo "  load-test-customer-data               load test data for the default sources created in create-test-customer"
+	@echo "                                          @param  test_source - load a specific source's data (aws, azure, gcp, onprem, all(default))"
 	@echo "                                          @param start - (optional) start date ex. 2019-08-02"
 	@echo "                                          @param end - (optional) end date ex. 2019-12-5"
 	@echo "  load-aws-org-unit-tree                inserts aws org tree into model and runs nise command to populate cost"
-	@echo "                                          @param tree_yml - (optional) Tree yaml file. Default: 'scripts/aws_org_tree.yml'."
+	@echo "                                          @param tree_yml - (optional) Tree yaml file. Default: 'dev/scripts/aws_org_tree.yml'."
 	@echo "                                          @param schema - (optional) schema name. Default: 'acct10001'."
 	@echo "                                          @param nise_yml - (optional) Nise yaml file. Defaults to nise static yaml."
 	@echo "                                          @param start_date - (optional) Date delta zero in the aws_org_tree.yml"
@@ -119,9 +120,9 @@ help:
 	@echo "                                         password: admin12"
 	@echo "  docker-up-min                        run database, koku/masu servers and worker"
 	@echo "  docker-down                          shut down all containers"
-	@echo "  docker-up-min-presto                 start minimum targets for Presto usage"
-	@echo "  docker-up-min-presto-no-build        start minimum targets for Presto usage without building koku base"
-	@echo "  docker-presto-down-all               Tear down Presto and Koku containers"
+	@echo "  docker-up-min-trino                 start minimum targets for Trino usage"
+	@echo "  docker-up-min-trino-no-build        start minimum targets for Trino usage without building koku base"
+	@echo "  docker-trino-down-all               Tear down Trino and Koku containers"
 	@echo "  docker-rabbit                        run RabbitMQ container"
 	@echo "  docker-reinitdb                      drop and recreate the database"
 	@echo "  docker-reinitdb-with-sources         drop and recreate the database with fake sources"
@@ -168,32 +169,33 @@ lint:
 	pre-commit run --all-files
 
 clear-testing:
-	$(PREFIX) $(PYTHON) $(TOPDIR)/scripts/clear_testing.py -p $(TOPDIR)/testing
+	$(PREFIX) $(PYTHON) $(SCRIPTDIR)/clear_testing.py -p $(TOPDIR)/testing
 
 clear-trino:
 	$(PREFIX) rm -fr ./.trino/
 
 create-test-customer: run-migrations docker-up-koku
-	$(PYTHON) $(TOPDIR)/scripts/create_test_customer.py || echo "WARNING: create_test_customer failed unexpectedly!"
+	$(PYTHON) $(SCRIPTDIR)/create_test_customer.py || echo "WARNING: create_test_customer failed unexpectedly!"
 
 create-test-customer-no-sources: run-migrations docker-up-koku
-	$(PYTHON) $(TOPDIR)/scripts/create_test_customer.py --no-sources --bypass-api || echo "WARNING: create_test_customer failed unexpectedly!"
+	$(PYTHON) $(SCRIPTDIR)/create_test_customer.py --no-sources --bypass-api || echo "WARNING: create_test_customer failed unexpectedly!"
 
 delete-test-sources:
-	$(PYTHON) $(TOPDIR)/scripts/delete_test_sources.py
+	$(PYTHON) $(SCRIPTDIR)/delete_test_sources.py
 
 delete-cost-models:
-	$(PYTHON) $(TOPDIR)/scripts/delete_cost_models.py
+	$(PYTHON) $(SCRIPTDIR)/delete_cost_models.py
 
 delete-test-customer-data: delete-test-sources delete-cost-models
 
+test_source=all
 load-test-customer-data:
-	$(TOPDIR)/scripts/load_test_customer_data.sh $(start) $(end)
+	$(SCRIPTDIR)/load_test_customer_data.sh $(test_source) $(start) $(end)
 	make load-aws-org-unit-tree
 
 load-aws-org-unit-tree:
 	@if [ $(shell $(PYTHON) -c 'import sys; print(sys.version_info[0])') = '3' ] ; then \
-		$(PYTHON) $(TOPDIR)/scripts/insert_org_tree.py tree_yml=$(tree_yml) schema=$(schema) nise_yml=$(nise_yml) start_date=$(start_date) ; \
+		$(PYTHON) $(SCRIPTDIR)/insert_org_tree.py tree_yml=$(tree_yml) schema=$(schema) nise_yml=$(nise_yml) start_date=$(start_date) ; \
 	else \
 		echo "This make target requires python3." ; \
 	fi
@@ -226,16 +228,16 @@ reset-db-statistics:
 requirements:
 	pipenv lock
 	pipenv lock -r > docs/rtd_requirements.txt
-	python scripts/create_manifest.py
+	python dev/scripts/create_manifest.py
 
 manifest:
-	python scripts/create_manifest.py
+	python dev/scripts/create_manifest.py
 
 check-manifest:
 	.github/scripts/check_manifest.sh
 
 run-migrations:
-	$(SCRIPTDIR)/run_migrations.sh $(applabel) $(migration)
+	scripts/run_migrations.sh $(applabel) $(migration)
 
 serve:
 	$(DJANGO_MANAGE) runserver
@@ -314,7 +316,7 @@ endif
 ###############################
 
 docker-down:
-	$(DOCKER_COMPOSE) down -v
+	$(DOCKER_COMPOSE) down -v --remove-orphans
 	$(PREFIX) make clear-testing
 
 docker-down-db:
@@ -323,9 +325,6 @@ docker-down-db:
 
 docker-logs:
 	$(DOCKER_COMPOSE) logs -f koku-server koku-worker masu-server
-
-docker-presto-logs:
-	$(DOCKER_COMPOSE) -f ./testing/compose_files/docker-compose-presto.yml logs -f
 
 docker-trino-logs:
 	$(DOCKER_COMPOSE) -f ./testing/compose_files/docker-compose-trino.yml logs -f
@@ -367,7 +366,7 @@ docker-up-koku:
 
 _koku-wait:
 	@echo "Waiting on koku status: "
-	@until ./scripts/check_for_koku_server.sh $${KOKU_API_HOST:-localhost} $${API_PATH_PREFIX:-/api/cost-management} $${KOKU_API_PORT:-8000} >/dev/null 2>&1 ; do \
+	@until ./dev/scripts/check_for_koku_server.sh $${KOKU_API_HOST:-localhost} $${API_PATH_PREFIX:-/api/cost-management} $${KOKU_API_PORT:-8000} >/dev/null 2>&1 ; do \
          printf "." ; \
          sleep 1 ; \
      done
@@ -393,10 +392,6 @@ docker-up-min-with-listener: docker-up-min docker-up-db
 
 docker-up-min-no-build-with-listener: docker-up-min-no-build docker-up-db
 	$(DOCKER_COMPOSE) up -d --scale koku-worker=$(scale) koku-listener
-
-docker-up-min-presto: docker-up-min docker-presto-up
-
-docker-up-min-presto-no-build: docker-up-min-no-build docker-presto-up
 
 docker-up-db:
 	$(DOCKER_COMPOSE) up -d db
@@ -430,52 +425,8 @@ docker-iqe-api-tests: docker-reinitdb _set-test-dir-permissions clear-testing
 docker-iqe-vortex-tests: docker-reinitdb _set-test-dir-permissions clear-testing
 	./testing/run_vortex_api_tests.sh
 
-docker-metastore-setup:
-	mkdir -p -m a+rwx ./.trino
-	@cp -fr deploy/metastore/ .trino/metastore/
-	find ./.trino/metastore -type d -exec chmod a+rwx {} \;
-	@[[ ! -d ./.trino/metastore/db-data ]] && mkdir -p -m a+rwx ./.trino/metastore/db-data || chmod a+rwx ./.trino/metastore/db-data
-	@cp -fr deploy/hadoop/ .trino/hadoop/
-#	@[[ ! -d ./.trino/hadoop/hadoop-logs ]] && mkdir -p -m a+rwx ./hadoop/hadoop-logs || chmod a+rwx ./hadoop/hadoop-logs
-	find ./.trino/hadoop -type d -exec chmod a+rwx {} \;
-	@$(SED_IN_PLACE) -e 's/s3path/$(shell echo $(or $(S3_BUCKET_NAME),koku-reports))/g' .trino/hadoop/hadoop-config/core-site.xml
-	@$(SED_IN_PLACE) -e 's/s3path/$(shell echo $(or $(S3_BUCKET_NAME),koku-reports))/g' .trino/metastore/hive-config/hive-site.xml
-	@$(SED_IN_PLACE) -e 's%s3endpoint%$(shell echo $(or $(S3_ENDPOINT),localhost))%g' .trino/metastore/hive-config/hive-site.xml
-	@$(SED_IN_PLACE) -e 's/s3access/$(shell echo $(or $(S3_ACCESS_KEY),localhost))/g' .trino/metastore/hive-config/hive-site.xml
-	@$(SED_IN_PLACE) -e 's;s3secret;$(shell echo $(or $(S3_SECRET),localhost));g' .trino/metastore/hive-config/hive-site.xml
-	@$(SED_IN_PLACE) -e 's/database_name/$(shell echo $(or $(HIVE_DATABASE_NAME),hive))/g' .trino/metastore/hive-config/hive-site.xml
-	@$(SED_IN_PLACE) -e 's/database_user/$(shell echo $(or $(HIVE_DATABASE_USER),hive))/g' .trino/metastore/hive-config/hive-site.xml
-	@$(SED_IN_PLACE) -e 's/database_password/$(shell echo $(or $(HIVE_DATABASE_PASSWORD),hive))/g' .trino/metastore/hive-config/hive-site.xml
-	@$(SED_IN_PLACE) -e 's/database_port/$(shell echo $(or $(DATABASE_PORT),5432))/g' .trino/metastore/hive-config/hive-site.xml
-	@$(SED_IN_PLACE) -e 's/database_host/$(shell echo $(or $(DATABASE_HOST),db))/g' .trino/metastore/hive-config/hive-site.xml
-	@$(SED_IN_PLACE) -e 's/database_sslmode/$(shell echo $(or $(DATABASE_SSLMODE),require))/g' .trino/metastore/hive-config/hive-site.xml
-
-
-docker-presto-setup:
-	@cp -fr deploy/presto/ .trino/presto/
-	find ./.trino/presto -type d -exec chmod a+rwx {} \;
-	@cp -fr deploy/hadoop/ .trino/hadoop/
-	find ./.trino/hadoop -type d -exec chmod a+rwx {} \;
-	@[[ ! -d ./.trino/parquet_data ]] && mkdir -p -m a+rwx ./.trino/parquet_data || chmod a+rwx ./.trino/parquet_data
-	@$(SED_IN_PLACE) -e 's/s3path/$(shell echo $(or $(S3_BUCKET_NAME),metastore))/g' .trino/hadoop/hadoop-config/core-site.xml
-	@$(SED_IN_PLACE) -e 's/DATABASE_NAME/$(shell echo $(or $(DATABASE_NAME),postgres))/g' .trino/presto/presto-catalog-config/postgres.properties
-	@$(SED_IN_PLACE) -e 's/DATABASE_USER/$(shell echo $(or $(DATABASE_USER),postgres))/g' .trino/presto/presto-catalog-config/postgres.properties
-	@$(SED_IN_PLACE) -e 's/DATABASE_PASSWORD/$(shell echo $(or $(DATABASE_PASSWORD),postgres))/g' .trino/presto/presto-catalog-config/postgres.properties
-
 minio-bucket-cleanup:
 	$(PREFIX) rm -fr ./.trino/parquet_data/koku-bucket/data/
-
-docker-presto-up: docker-metastore-setup docker-presto-setup
-	docker-compose -f ./testing/compose_files/docker-compose-presto.yml up -d $(build)
-
-docker-presto-ps:
-	docker-compose -f ./testing/compose_files/docker-compose-presto.yml ps
-
-docker-presto-down:
-	docker-compose -f ./testing/compose_files/docker-compose-presto.yml down -v
-	make clear-trino
-
-docker-presto-down-all: docker-presto-down docker-down
 
 docker-trino-setup:
 	mkdir -p -m a+rwx ./.trino
@@ -486,21 +437,24 @@ docker-trino-setup:
 	@[[ ! -d ./.trino/parquet_data ]] && mkdir -p -m a+rwx ./.trino/parquet_data || chmod a+rwx ./.trino/parquet_data
 	@$(SED_IN_PLACE) -e 's/s3path/$(shell echo $(or $(S3_BUCKET_NAME),metastore))/g' .trino/hadoop/hadoop-config/core-site.xml
 
-docker-trino-up: docker-metastore-setup docker-trino-setup
+docker-trino-up: docker-trino-setup
+	docker-compose -f ./testing/compose_files/docker-compose-trino.yml up --build -d
+
+docker-trino-up-no-build: docker-trino-setup
 	docker-compose -f ./testing/compose_files/docker-compose-trino.yml up -d $(build)
 
 docker-trino-ps:
 	docker-compose -f ./testing/compose_files/docker-compose-trino.yml ps
 
 docker-trino-down:
-	docker-compose -f ./testing/compose_files/docker-compose-trino.yml down -v
+	docker-compose -f ./testing/compose_files/docker-compose-trino.yml down -v --remove-orphans
 	make clear-trino
 
 docker-trino-down-all: docker-trino-down docker-down
 
 docker-up-min-trino: docker-up-min docker-trino-up
 
-docker-up-min-trino-no-build: docker-up-min-no-build docker-trino-up
+docker-up-min-trino-no-build: docker-up-min-no-build docker-trino-up-no-build
 
 
 ### Source targets ###

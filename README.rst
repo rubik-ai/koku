@@ -65,7 +65,7 @@ This project is developed using the Django web framework. Many configuration set
 
 5. Developing inside a virtual environment is recommended. A Pipfile is provided. Pipenv is recommended for combining virtual environment (virtualenv) and dependency management (pip). To install pipenv, use pip ::
 
-    pip3 install pipenv==2018.11.26
+    pip3 install pipenv==2021.11.9
 
 6. Then project dependencies and a virtual environment can be created using ::
 
@@ -177,7 +177,7 @@ If you need to run PostgreSQL using SSL for local development:
 
 1. Ensure that you have ``openssl`` installed.
 2. Ensure that you have the ``KOKU_PATH`` environment set to the koku source root directory.
-3. Execute ``${KOKU_PATH}/scripts/genssc`` and follow the prompts to create local a self-signed certificate for PostgreSQL.
+3. Execute ``${KOKU_PATH}/dev/scripts/genssc`` and follow the prompts to create local a self-signed certificate for PostgreSQL.
 4. In the ``docker-compose.yml`` file, there are two commented sections labeled "PostgreSQL SSL". Follow the directions in these comments to enable the volume mounts and command options to use SSL.
 
 See  https://access.redhat.com/containers/?tab=overview#/registry.access.redhat.com/rhel8/postgresql-12

@@ -20,7 +20,7 @@ from django.conf import settings
 from tenant_schemas.utils import schema_context
 
 from api.common import log_json
-from api.models import Provider
+from api.provider.models import Provider
 from masu.database.aws_report_db_accessor import AWSReportDBAccessor
 from masu.database.provider_db_accessor import ProviderDBAccessor
 from masu.processor import enable_trino_processing
@@ -163,6 +163,15 @@ def get_local_file_name(cur_key):
     return local_file_name
 
 
+def get_provider_uuid_from_arn(role_arn):
+    """Returns provider_uuid given the arn."""
+    aws_creds = {"role_arn": f"{role_arn}"}
+    query = Provider.objects.filter(authentication_id__credentials=aws_creds)
+    if query.first():
+        return query.first().uuid
+    return None
+
+
 def get_account_alias_from_role_arn(role_arn, session=None):
     """
     Get account ID for given RoleARN.
@@ -174,20 +183,31 @@ def get_account_alias_from_role_arn(role_arn, session=None):
         (String): Account ID
 
     """
+    provider_uuid = get_provider_uuid_from_arn(role_arn)
+    context_key = "aws_list_account_aliases"
     if not session:
         session = get_assume_role_session(role_arn)
     iam_client = session.client("iam")
 
     account_id = role_arn.split(":")[-2]
     alias = account_id
-    try:
-        alias_response = iam_client.list_account_aliases()
-        alias_list = alias_response.get("AccountAliases", [])
-        # Note: Boto3 docs states that you can only have one alias per account
-        # so the pop() should be ok...
-        alias = alias_list.pop() if alias_list else None
-    except ClientError as err:
-        LOG.info("Unable to list account aliases.  Reason: %s", str(err))
+
+    with ProviderDBAccessor(provider_uuid) as provider_accessor:
+        context = provider_accessor.get_additional_context()
+        list_aliases = context.get(context_key, True)
+
+    if list_aliases:
+        try:
+            alias_response = iam_client.list_account_aliases()
+            alias_list = alias_response.get("AccountAliases", [])
+            # Note: Boto3 docs states that you can only have one alias per account
+            # so the pop() should be ok...
+            alias = alias_list.pop() if alias_list else None
+        except ClientError as err:
+            LOG.info("Unable to list account aliases.  Reason: %s", str(err))
+            context[context_key] = False
+            with ProviderDBAccessor(provider_uuid) as provider_accessor:
+                provider_accessor.set_additional_context(context)
 
     return (account_id, alias)
 
@@ -203,21 +223,29 @@ def get_account_names_by_organization(role_arn, session=None):
         (list): Dictionaries of accounts with id, name keys
 
     """
+    context_key = "crawl_hierarchy"
+    provider_uuid = get_provider_uuid_from_arn(role_arn)
     if not session:
         session = get_assume_role_session(role_arn)
-    org_client = session.client("organizations")
     all_accounts = []
-    try:
-        paginator = org_client.get_paginator("list_accounts")
-        response_iterator = paginator.paginate()
-        for response in response_iterator:
-            accounts = response.get("Accounts", [])
-            for account in accounts:
-                account_id = account.get("Id")
-                name = account.get("Name")
-                all_accounts.append({"id": account_id, "name": name})
-    except ClientError as err:
-        LOG.info("Unable to list accounts using organization API.  Reason: %s", str(err))
+
+    with ProviderDBAccessor(provider_uuid) as provider_accessor:
+        context = provider_accessor.get_additional_context()
+        crawlable = context.get(context_key, True)
+
+    if crawlable:
+        try:
+            org_client = session.client("organizations")
+            paginator = org_client.get_paginator("list_accounts")
+            response_iterator = paginator.paginate()
+            for response in response_iterator:
+                accounts = response.get("Accounts", [])
+                for account in accounts:
+                    account_id = account.get("Id")
+                    name = account.get("Name")
+                    all_accounts.append({"id": account_id, "name": name})
+        except ClientError as err:
+            LOG.info("Unable to list accounts using organization API.  Reason: %s", str(err))
 
     return all_accounts
 
@@ -494,20 +522,20 @@ def match_openshift_resources_and_labels(data_frame, cluster_topology, matched_t
 def get_column_converters():
     """Return source specific parquet column converters."""
     return {
-        "bill/BillingPeriodStartDate": ciso8601.parse_datetime,
-        "bill/BillingPeriodEndDate": ciso8601.parse_datetime,
-        "lineItem/UsageStartDate": ciso8601.parse_datetime,
-        "lineItem/UsageEndDate": ciso8601.parse_datetime,
-        "lineItem/UsageAmount": safe_float,
-        "lineItem/NormalizationFactor": safe_float,
-        "lineItem/NormalizedUsageAmount": safe_float,
-        "lineItem/UnblendedRate": safe_float,
-        "lineItem/UnblendedCost": safe_float,
-        "lineItem/BlendedRate": safe_float,
-        "lineItem/BlendedCost": safe_float,
-        "pricing/publicOnDemandCost": safe_float,
-        "pricing/publicOnDemandRate": safe_float,
-        "savingsPlan/SavingsPlanEffectiveCost": safe_float,
+        "bill/billingperiodstartdate": ciso8601.parse_datetime,
+        "bill/billingperiodenddate": ciso8601.parse_datetime,
+        "lineitem/usagestartdate": ciso8601.parse_datetime,
+        "lineitem/usageenddate": ciso8601.parse_datetime,
+        "lineitem/usageamount": safe_float,
+        "lineitem/normalizationfactor": safe_float,
+        "lineitem/normalizedusageamount": safe_float,
+        "lineitem/unblendedrate": safe_float,
+        "lineitem/unblendedcost": safe_float,
+        "lineitem/blendedrate": safe_float,
+        "lineitem/blendedcost": safe_float,
+        "pricing/publicondemandcost": safe_float,
+        "pricing/publicondemandrate": safe_float,
+        "savingsplan/savingsplaneffectivecost": safe_float,
     }
 
 

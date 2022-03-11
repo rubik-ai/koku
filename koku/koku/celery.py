@@ -214,11 +214,6 @@ app.conf.beat_schedule["remove_stale_tenants"] = {
     "schedule": crontab(hour=0, minute=0),
 }
 
-# Beat used to get Hybrid Committed Spend(HCS) data
-app.conf.beat_schedule["collect_hcs_report_data"] = {
-    "task": "hcs.tasks.collect_hcs_report_data",
-    "schedule": crontab(hour=0, minute=0),
-}
 
 # Celery timeout if broker is unavaiable to avoid blocking indefintely
 app.conf.broker_transport_options = {"max_retries": 4, "interval_start": 0, "interval_step": 0.5, "interval_max": 3}
@@ -236,7 +231,9 @@ def wait_for_migrations(sender, instance, **kwargs):  # pragma: no cover
 
     httpd = start_probe_server(WorkerProbeServer)
 
-    while not check_migrations():
+    # This is a special case because check_migrations() returns three values
+    # True means migrations are up-to-date
+    while check_migrations() != True:  # noqa
         LOG.warning("Migrations not done. Sleeping")
         time.sleep(5)
 
@@ -249,7 +246,12 @@ def init_worker(**kwargs):
     from koku.feature_flags import UNLEASH_CLIENT
 
     LOG.info("Initializing UNLEASH_CLIENT for celery worker.")
+    unleash_init_start = datetime.utcnow()
     UNLEASH_CLIENT.initialize_client()
+    LOG.info(
+        "UNLEASH_CLIENT initialized for celery worker in "
+        f"{(datetime.utcnow() - unleash_init_start).total_seconds()} seconds."
+    )
 
 
 @worker_process_shutdown.connect
