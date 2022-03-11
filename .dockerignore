@@ -13,3 +13,4 @@
 !scripts/job_script.sh
 !scripts/copy_static_perspective_data.py
 !./*.sh
+!dataos/Makefile

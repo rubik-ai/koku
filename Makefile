@@ -522,15 +522,17 @@ endif
 # From here you can hit the http://127.0.0.1:5042/api/cost-management/v1/download/ endpoint to start running masu.
 # After masu has run these endpoints should have data in them: (v1/reports/openshift/memory, v1/reports/openshift/compute/, v1/reports/openshift/volumes/)
 
+#http://0.0.0.0:8000/api/cost-management/v1/sources/
+#http://0.0.0.0:8000/caretaker-ck-usage/api/v1/sources/
+
 aws-source:
 ifndef aws_name
 	$(error param aws_name is not set)
 endif
-ifndef bucket
-	$(error param bucket is not set)
-endif
+	(printenv CARETAKER_USAGE_SOURCE_URL > /dev/null 2>&1) || (echo 'CARETAKER_USAGE_SOURCE_URL is not set in .env' && exit 1)
 	(printenv AWS_RESOURCE_NAME > /dev/null 2>&1) || (echo 'AWS_RESOURCE_NAME is not set in .env' && exit 1)
-	curl -d '{"name": "$(aws_name)", "source_type": "AWS", "authentication": {"credentials": {"role_arn":"${AWS_RESOURCE_NAME}"}}, "billing_source": {"data_source": {"bucket": "$(bucket)"}}}' -H "Content-Type: application/json" -X POST http://0.0.0.0:8000/api/cost-management/v1/sources/
+	(printenv AWS_BUCKET > /dev/null 2>&1) || (echo 'AWS_BUCKET is not set in .env' && exit 1)
+	curl -d '{"name": "$(aws_name)", "source_type": "AWS", "authentication": {"credentials": {"role_arn":"${AWS_RESOURCE_NAME}"}}, "billing_source": {"data_source": {"bucket": "${AWS_BUCKET}}}' -H "Content-Type: application/json" -X POST ${CARETAKER_USAGE_SOURCE_URL}
 
 gcp-source:
 ifndef gcp_name
@@ -539,7 +541,7 @@ endif
 	(printenv GCP_DATASET > /dev/null 2>&1) || (echo 'GCP_DATASET is not set in .env' && exit 1)
 	(printenv GCP_TABLE_ID > /dev/null 2>&1) || (echo 'GCP_TABLE_ID is not set in .env' && exit 1)
 	(printenv GCP_PROJECT_ID > /dev/null 2>&1) || (echo 'GCP_PROJECT_ID is not set in .env' && exit 1)
-	curl -d '{"name": "$(gcp_name)", "source_type": "GCP", "authentication": {"credentials": {"project_id":"${GCP_PROJECT_ID}"}}, "billing_source": {"data_source": {"table_id": "${GCP_TABLE_ID}", "dataset": "${GCP_DATASET}"}}}' -H "Content-Type: application/json" -X POST http://0.0.0.0:8000/api/cost-management/v1/sources/
+	curl -d '{"name": "$(gcp_name)", "source_type": "GCP", "authentication": {"credentials": {"project_id":"${GCP_PROJECT_ID}"}}, "billing_source": {"data_source": {"table_id": "${GCP_TABLE_ID}", "dataset": "${GCP_DATASET}"}}}' -H "Content-Type: application/json" -X POST ${CARETAKER_USAGE_SOURCE_URL}
 
 azure-source:
 ifndef azure_name
@@ -552,7 +554,7 @@ endif
 	(printenv AZURE_CLIENT_ID > /dev/null 2>&1) || (echo 'AZURE_CLIENT_ID is not set in .env' && exit 1)
 	(printenv AZURE_CLIENT_SECRET > /dev/null 2>&1) || (echo 'AZURE_CLIENT_SECRET is not set in .env' && exit 1)
 	(printenv AZURE_CLOUD > /dev/null 2>&1) || (echo 'AZURE_CLOUD is not set in .env' && exit 1)
-	curl -d '{"name": "$(azure_name)", "source_type": "Azure", "authentication": {"credentials": {"subscription_id":"${AZURE_SUBSCRIPTION_ID}", "tenant_id": "${AZURE_TENANT_ID}", "client_id": "${AZURE_CLIENT_ID}", "client_secret": "${AZURE_CLIENT_SECRET}", "cloud": "${AZURE_CLOUD}"}}, "billing_source": {"data_source": {"resource_group": "${AZURE_RESOURCE_GROUP}", "storage_account": "${AZURE_STORAGE_ACCOUNT}"}}}' -H "Content-Type: application/json" -X POST http://0.0.0.0:8000/api/cost-management/v1/sources/
+	curl -d '{"name": "$(azure_name)", "source_type": "Azure", "authentication": {"credentials": {"subscription_id":"${AZURE_SUBSCRIPTION_ID}", "tenant_id": "${AZURE_TENANT_ID}", "client_id": "${AZURE_CLIENT_ID}", "client_secret": "${AZURE_CLIENT_SECRET}", "cloud": "${AZURE_CLOUD}"}}, "billing_source": {"data_source": {"resource_group": "${AZURE_RESOURCE_GROUP}", "storage_account": "${AZURE_STORAGE_ACCOUNT}"}}}' -H "Content-Type: application/json" -X POST ${CARETAKER_USAGE_SOURCE_URL}
 
 
 ###################################################
@@ -680,11 +682,11 @@ restore-local-db-dir:
 # DataOS Commands
 dataos-docker-build:
 	@echo "====docker build===="
-	docker build --progress=plain -f ./dataos/Dockerfile . -t rubiklabs/caretaker-cloud-kernel-usage:0.1.0-dev
+	docker build --progress=plain -f ./dataos/Dockerfile . -t rubiklabs/caretaker-cloud-kernel-usage:0.2.0-dev
 
 dataos-docker-push: dataos-docker-build
 	@echo "====docker push===="
-	docker push rubiklabs/caretaker-cloud-kernel-usage:0.1.0-dev
+	docker push rubiklabs/caretaker-cloud-kernel-usage:0.2.0-dev
 
 dataos-docker-up: dataos-docker-deps-up
 	@echo "====docker compose up===="

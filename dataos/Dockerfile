@@ -35,6 +35,7 @@ COPY ./.s2i/bin/ $STI_SCRIPTS_PATH
 COPY . /tmp/src/.
 
 RUN \
+    ls -la /tmp/src/ && \
     /usr/bin/fix-permissions /tmp/src && \
     chmod 755 $STI_SCRIPTS_PATH/assemble $STI_SCRIPTS_PATH/run && \
     groupadd -g ${USER_ID} caretaker && \
@@ -45,6 +46,7 @@ USER caretaker
 
 RUN umask u=rwx,g=rwx,o=rx && \
     $STI_SCRIPTS_PATH/assemble && \
+    mv /opt/app-root/src/dataos/Makefile /opt/app-root/src/Makefile && \
     ls -la /opt/app-root/src && \
     ls -la /opt/app-root/src/koku
 
