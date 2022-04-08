@@ -32,7 +32,7 @@ LABEL summary="$SUMMARY" \
 # glibc-langpack-en is needed to set locale to en_US and disable warning about it
 # gcc to compile some python packages (e.g. ciso8601)
 # shadow-utils to make useradd available
-RUN INSTALL_PKGS="python38 python38-devel glibc-langpack-en gcc shadow-utils" && \
+RUN INSTALL_PKGS="python38 python38-devel glibc-langpack-en gcc shadow-utils make" && \
     microdnf --nodocs -y upgrade && \
     microdnf -y --setopt=tsflags=nodocs --setopt=install_weak_deps=0 install $INSTALL_PKGS && \
     rpm -V $INSTALL_PKGS && \
@@ -77,10 +77,12 @@ RUN \
     chown -R koku:0 /opt/koku
 
 RUN mv /opt/koku/dataos/Makefile /opt/koku/Makefile && \
-    rm -rf /opt/koku/dataos && \
-    ls -la /opt/koku && \
-    ls -la /opt/koku/koku && \
-    ls -la /opt/koku/scripts
+    rm -rf /opt/koku/dataos
+
+#RUN ls -la /opt/koku && \
+#    ls -la /opt/koku/koku && \
+#    ls -la /opt/koku/scripts && \
+#    make -h
 
 USER koku
 
