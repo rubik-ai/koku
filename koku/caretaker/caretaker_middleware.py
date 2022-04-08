@@ -40,7 +40,7 @@ class CaretakerIdentityHeaderMiddleware(MiddlewareMixin):
                 username=user_dict.get("username", "caretaker"),
                 email=user_dict.get("email", "caretaker@tmdc.io"),
                 admin=user_dict.get("is_org_admin", False),
-                customer=Mock(account_id=identity_header.get("account_number", "001")),
+                customer=Mock(account_id=identity_header.get("account_number", "2020")),
                 req_id="CARETAKER",
             )
 

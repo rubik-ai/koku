@@ -636,16 +636,16 @@ restore-local-db-dir:
 # DataOS Commands
 dataos-docker-build:
 	@echo "====docker build===="
-	docker build --progress=plain -f ./dataos/Dockerfile . -t rubiklabs/caretaker-cloud-kernel-usage:0.2.0-dev
+	docker build --progress=plain -f ./dataos/Dockerfile . -t rubiklabs/cloud-kernel-usage:0.3.0-dev
 
 dataos-docker-push: dataos-docker-build
 	@echo "====docker push===="
-	docker push rubiklabs/caretaker-cloud-kernel-usage:0.2.0-dev
+	docker push rubiklabs/cloud-kernel-usage:0.3.0-dev
 
 dataos-docker-up: dataos-docker-deps-up
 	@echo "====docker compose up===="
 	@echo "====waiting for deps to finish starting===="
-	@sleep 25
+	@sleep 5
 	$(DOCKER_COMPOSE) --project-directory . -f ./dataos/docker-compose.yml up -d
 
 dataos-docker-deps-up:
