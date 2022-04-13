@@ -6,7 +6,7 @@ endif
 	(printenv CARETAKER_USAGE_SOURCE_URL > /dev/null 2>&1) || (echo 'CARETAKER_USAGE_SOURCE_URL is not set in .env' && exit 1)
 	(printenv AWS_RESOURCE_NAME > /dev/null 2>&1) || (echo 'AWS_RESOURCE_NAME is not set in .env' && exit 1)
 	(printenv AWS_BUCKET > /dev/null 2>&1) || (echo 'AWS_BUCKET is not set in .env' && exit 1)
-	curl -d '{"name": "$(aws_name)", "source_type": "AWS", "authentication": {"credentials": {"role_arn":"${AWS_RESOURCE_NAME}"}}, "billing_source": {"data_source": {"bucket": "${AWS_BUCKET}}}' -H "Content-Type: application/json" -X POST ${CARETAKER_USAGE_SOURCE_URL}
+	curl -d '{"name": "$(aws_name)", "source_type": "AWS", "authentication": {"credentials": {"role_arn":"${AWS_RESOURCE_NAME}"}}, "billing_source": {"data_source": {"bucket": "${AWS_BUCKET}"}}}' -H "Content-Type: application/json" -X POST ${CARETAKER_USAGE_SOURCE_URL}
 
 gcp-source:
 ifndef gcp_name
